@@ -19,18 +19,18 @@ tray-icon lets you create tray icons for desktop applications.
 
 ## Dependencies (Linux Only)
 
-On Linux, `gtk`, `libxdo` is used to make the predfined `Copy`, `Cut`, `Paste` and `SelectAll` menu items work and `libappindicator` or `libayatnat-appindicator` are used to create the tray icon, so make sure to install them on your system.
+On Linux, `gtk`, `libxdo` is used to make the predfined `Copy`, `Cut`, `Paste` and `SelectAll` menu items work, so make sure to install them on your system.
 
 #### Arch Linux / Manjaro:
 
 ```sh
-pacman -S gtk3 xdotool libappindicator-gtk3 #or libayatana-appindicator
+pacman -S gtk3 xdotool
 ```
 
 #### Debian / Ubuntu:
 
 ```sh
-sudo apt install libgtk-3-dev libxdo-dev libappindicator3-dev #or libayatana-appindicator3-dev
+sudo apt install libgtk-3-dev libxdo-dev
 ```
 
 ## Examples

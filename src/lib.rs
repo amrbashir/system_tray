@@ -120,11 +120,7 @@
 //! [winit]: https://docs.rs/winit
 //! [tao]: https://docs.rs/tao
 
-use std::{
-    cell::RefCell,
-    path::{Path, PathBuf},
-    rc::Rc,
-};
+use std::{cell::RefCell, rc::Rc};
 
 use counter::Counter;
 use crossbeam_channel::{unbounded, Receiver, Sender};
@@ -172,9 +168,6 @@ pub struct TrayIconAttributes {
     ///     Setting an empty [`Menu`](crate::menu::Menu) is enough.
     pub icon: Option<Icon>,
 
-    /// Tray icon temp dir path. **Linux only**.
-    pub temp_dir_path: Option<PathBuf>,
-
     /// Use the icon as a [template](https://developer.apple.com/documentation/appkit/nsimage/1520017-template?language=objc). **macOS only**.
     pub icon_is_template: bool,
 
@@ -200,7 +193,6 @@ impl Default for TrayIconAttributes {
             tooltip: None,
             menu: None,
             icon: None,
-            temp_dir_path: None,
             icon_is_template: false,
             menu_on_left_click: true,
             title: None,
@@ -275,15 +267,6 @@ impl TrayIconBuilder {
     /// - **Windows:** Unsupported.
     pub fn with_title<S: AsRef<str>>(mut self, title: S) -> Self {
         self.attrs.title.replace(title.as_ref().to_string());
-        self
-    }
-
-    /// Set tray icon temp dir path. **Linux only**.
-    ///
-    /// On Linux, we need to write the icon to the disk and usually it will
-    /// be `$XDG_RUNTIME_DIR/tray-icon` or `$TEMP/tray-icon`.
-    pub fn with_temp_dir_path<P: AsRef<Path>>(mut self, s: P) -> Self {
-        self.attrs.temp_dir_path = Some(s.as_ref().to_path_buf());
         self
     }
 
@@ -397,17 +380,6 @@ impl TrayIcon {
     /// Show or hide this tray icon
     pub fn set_visible(&self, visible: bool) -> Result<()> {
         self.tray.borrow_mut().set_visible(visible)
-    }
-
-    /// Sets the tray icon temp dir path. **Linux only**.
-    ///
-    /// On Linux, we need to write the icon to the disk and usually it will
-    /// be `$XDG_RUNTIME_DIR/tray-icon` or `$TEMP/tray-icon`.
-    pub fn set_temp_dir_path<P: AsRef<Path>>(&self, path: Option<P>) {
-        #[cfg(target_os = "linux")]
-        self.tray.borrow_mut().set_temp_dir_path(path);
-        #[cfg(not(target_os = "linux"))]
-        let _ = path;
     }
 
     /// Set the current icon as a [template](https://developer.apple.com/documentation/appkit/nsimage/1520017-template?language=objc). **macOS only**.

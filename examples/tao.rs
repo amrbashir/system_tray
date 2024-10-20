@@ -9,7 +9,7 @@ use tao::{
     event_loop::{ControlFlow, EventLoopBuilder},
 };
 use tray_icon::{
-    menu::{AboutMetadata, Menu, MenuEvent, MenuItem, PredefinedMenuItem},
+    menu::{AboutMetadata, Menu, MenuEvent, MenuItem, CheckMenuItem, IconMenuItem, PredefinedMenuItem, Submenu},
     TrayIconBuilder, TrayIconEvent,
 };
 
@@ -37,6 +37,11 @@ fn main() {
 
     let tray_menu = Menu::new();
 
+    let icon_i = IconMenuItem::new("Icon", true, Some(menu_icon(std::path::Path::new(path))), None);
+    let check_i = CheckMenuItem::new("Check", true, false, None);
+    let subitem_i = MenuItem::new("Subitem", true, None);
+    let submenu_i = Submenu::new("Submenu", true);
+    submenu_i.append(&subitem_i);
     let quit_i = MenuItem::new("Quit", true, None);
     tray_menu.append_items(&[
         &PredefinedMenuItem::about(
@@ -48,6 +53,9 @@ fn main() {
             }),
         ),
         &PredefinedMenuItem::separator(),
+        &icon_i,
+        &check_i,
+        &submenu_i,
         &quit_i,
     ]);
 
@@ -113,4 +121,16 @@ fn load_icon(path: &std::path::Path) -> tray_icon::Icon {
         (rgba, width, height)
     };
     tray_icon::Icon::from_rgba(icon_rgba, icon_width, icon_height).expect("Failed to open icon")
+}
+
+fn menu_icon(path: &std::path::Path) -> muda::Icon {
+    let (icon_rgba, icon_width, icon_height) = {
+        let image = image::open(path)
+            .expect("Failed to open icon path")
+            .into_rgba8();
+        let (width, height) = image.dimensions();
+        let rgba = image.into_raw();
+        (rgba, width, height)
+    };
+    muda::Icon::from_rgba(icon_rgba, icon_width, icon_height).expect("Failed to open icon")
 }
