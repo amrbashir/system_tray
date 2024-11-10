@@ -18,9 +18,7 @@ pub struct TrayIcon {
 impl TrayIcon {
     pub fn new(id: TrayIconId, attrs: TrayIconAttributes) -> crate::Result<Self> {
         let icon = attrs.icon.map(|icon| icon.inner.into());
-
-        let title = title_or_pkg_name(attrs.title.unwrap_or_default());
-
+        let title = attrs.title.unwrap_or_default();
         let tooltip = attrs.tooltip.unwrap_or_default();
 
         let menu = attrs
@@ -77,7 +75,6 @@ impl TrayIcon {
             .map(AsRef::as_ref)
             .unwrap_or_default()
             .to_string();
-        let title = title_or_pkg_name(title);
 
         self.tray_handle.update(|tray| {
             tray.set_title(title);
@@ -98,13 +95,5 @@ impl TrayIcon {
 
     pub fn rect(&self) -> Option<crate::Rect> {
         None
-    }
-}
-
-fn title_or_pkg_name(title: String) -> String {
-    if !title.is_empty() {
-        title
-    } else {
-        env!("CARGO_PKG_NAME").into()
     }
 }

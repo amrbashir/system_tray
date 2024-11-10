@@ -1,4 +1,4 @@
-use muda::{AboutDialog, PredefinedMenuItemType};
+use muda::{AboutDialog, PredefinedMenuItemKind};
 
 use super::tray::Tray;
 
@@ -8,7 +8,7 @@ pub struct StandardItem {
     label: String,
     enabled: bool,
     icon: Option<Vec<u8>>,
-    predefined_menu_item_type: Option<PredefinedMenuItemType>,
+    predefined_menu_item_kind: Option<PredefinedMenuItemKind>,
 }
 
 #[derive(Debug, Clone)]
@@ -61,7 +61,7 @@ impl From<muda::MenuItemKind> for MenuItem {
                 label: menu_item.text().replace('&', ""),
                 enabled: menu_item.is_enabled(),
                 icon: None,
-                predefined_menu_item_type: None,
+                predefined_menu_item_kind: None,
             }
             .into(),
             muda::MenuItemKind::Submenu(submenu) => SubMenuItem {
@@ -71,14 +71,14 @@ impl From<muda::MenuItemKind> for MenuItem {
             }
             .into(),
             muda::MenuItemKind::Predefined(predefined_menu_item) => {
-                match predefined_menu_item.predefined_item_type() {
-                    Some(PredefinedMenuItemType::Separator) => MenuItem::Separator,
-                    Some(predefined_menu_item_type) => StandardItem {
+                match predefined_menu_item.predefined_item_kind() {
+                    Some(PredefinedMenuItemKind::Separator) => MenuItem::Separator,
+                    Some(predefined_menu_item_kind) => StandardItem {
                         id: predefined_menu_item.id().0.clone(),
                         label: predefined_menu_item.text().replace('&', ""),
                         enabled: true,
                         icon: None,
-                        predefined_menu_item_type: Some(predefined_menu_item_type),
+                        predefined_menu_item_kind: Some(predefined_menu_item_kind),
                     }
                     .into(),
                     _ => StandardItem {
@@ -86,7 +86,7 @@ impl From<muda::MenuItemKind> for MenuItem {
                         label: predefined_menu_item.text().replace('&', ""),
                         enabled: true,
                         icon: None,
-                        predefined_menu_item_type: None,
+                        predefined_menu_item_kind: None,
                     }
                     .into(),
                 }
@@ -102,8 +102,10 @@ impl From<muda::MenuItemKind> for MenuItem {
                 id: icon_menu_item.id().0.clone(),
                 label: icon_menu_item.text().replace('&', ""),
                 enabled: icon_menu_item.is_enabled(),
-                icon: icon_menu_item.icon().map(|icon| icon.to_png()),
-                predefined_menu_item_type: None,
+                icon: icon_menu_item
+                    .icon()
+                    .map(|icon| icon.to_pixbuf().save_to_bufferv("png", &[]).unwrap()),
+                predefined_menu_item_kind: None,
             }
             .into(),
         }
@@ -115,8 +117,8 @@ impl From<MenuItem> for ksni::MenuItem<Tray> {
         match item {
             MenuItem::Standard(menu_item) => {
                 let id = menu_item.id;
-                match menu_item.predefined_menu_item_type {
-                    Some(PredefinedMenuItemType::About(Some(metadata))) => {
+                match menu_item.predefined_menu_item_kind {
+                    Some(PredefinedMenuItemKind::About(Some(metadata))) => {
                         let about_dialog = AboutDialog::new(metadata);
                         ksni::menu::StandardItem {
                             label: menu_item.label,
