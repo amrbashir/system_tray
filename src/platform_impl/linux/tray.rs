@@ -1,6 +1,10 @@
+use std::sync::Arc;
+
+use arc_swap::ArcSwap;
+
 use crate::{MouseButton, MouseButtonState, TrayIconEvent, TrayIconId};
 
-use super::menu::MenuItem;
+use super::menu::muda_to_ksni_menu_item;
 
 pub struct Tray {
     id: TrayIconId,
@@ -8,7 +12,7 @@ pub struct Tray {
     title: String,
     status: ksni::Status,
     tooltip: String,
-    menu: Vec<MenuItem>,
+    menu: Vec<Arc<ArcSwap<muda::CompatMenuItem>>>,
 }
 
 impl Tray {
@@ -17,7 +21,7 @@ impl Tray {
         icon: Option<ksni::Icon>,
         title: String,
         tooltip: String,
-        menu: Vec<MenuItem>,
+        menu: Vec<Arc<ArcSwap<muda::CompatMenuItem>>>,
     ) -> Self {
         Tray {
             id,
@@ -45,7 +49,7 @@ impl Tray {
         self.tooltip = tooltip;
     }
 
-    pub fn set_menu(&mut self, menu: Vec<MenuItem>) {
+    pub fn set_menu(&mut self, menu: Vec<Arc<ArcSwap<muda::CompatMenuItem>>>) {
         self.menu = menu;
     }
 }
@@ -77,7 +81,7 @@ impl ksni::Tray for Tray {
     }
 
     fn menu(&self) -> Vec<ksni::MenuItem<Self>> {
-        self.menu.iter().cloned().map(Into::into).collect()
+        self.menu.iter().cloned().map(muda_to_ksni_menu_item).collect()
     }
 
     fn activate(&mut self, x: i32, y: i32) {

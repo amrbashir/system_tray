@@ -6,6 +6,8 @@ mod icon;
 mod menu;
 mod tray;
 
+use std::thread;
+
 pub(crate) use icon::PlatformIcon;
 use tray::Tray;
 
@@ -24,12 +26,19 @@ impl TrayIcon {
         let menu = attrs
             .menu
             .as_ref()
-            .map(|menu| menu.items().into_iter().map(Into::into).collect())
+            .map(|menu| menu.compat_items())
             .unwrap_or_default();
 
         let tray_service = ksni::TrayService::new(Tray::new(id, icon, title, tooltip, menu));
         let tray_handle = tray_service.handle();
         tray_service.spawn();
+
+        let update_tray_handle = tray_handle.clone();
+        thread::spawn(move || {
+            while muda::recv_menu_update().is_ok() {
+                update_tray_handle.update(|_| {});
+            }
+        });
 
         Ok(Self { tray_handle })
     }
@@ -47,7 +56,7 @@ impl TrayIcon {
     pub fn set_menu(&mut self, menu: Option<Box<dyn crate::menu::ContextMenu>>) {
         let menu = menu
             .as_ref()
-            .map(|menu| menu.items().into_iter().map(Into::into).collect())
+            .map(|menu| menu.compat_items())
             .unwrap_or_default();
 
         self.tray_handle.update(|tray| {

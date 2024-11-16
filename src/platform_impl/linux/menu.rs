@@ -1,166 +1,64 @@
+use std::sync::Arc;
+
+use arc_swap::ArcSwap;
 use muda::{AboutDialog, PredefinedMenuItemKind};
 
 use super::tray::Tray;
 
-#[derive(Debug, Clone)]
-pub struct StandardItem {
-    id: String,
-    label: String,
-    enabled: bool,
-    icon: Option<Vec<u8>>,
-    predefined_menu_item_kind: Option<PredefinedMenuItemKind>,
-}
-
-#[derive(Debug, Clone)]
-pub struct CheckmarkItem {
-    id: String,
-    label: String,
-    enabled: bool,
-    checked: bool,
-}
-
-#[derive(Debug, Clone)]
-pub struct SubMenuItem {
-    label: String,
-    enabled: bool,
-    submenu: Vec<MenuItem>,
-}
-
-#[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone)]
-pub enum MenuItem {
-    Standard(StandardItem),
-    Checkmark(CheckmarkItem),
-    SubMenu(SubMenuItem),
-    Separator,
-}
-
-impl From<StandardItem> for MenuItem {
-    fn from(item: StandardItem) -> Self {
-        Self::Standard(item)
-    }
-}
-
-impl From<CheckmarkItem> for MenuItem {
-    fn from(item: CheckmarkItem) -> Self {
-        Self::Checkmark(item)
-    }
-}
-
-impl From<SubMenuItem> for MenuItem {
-    fn from(item: SubMenuItem) -> Self {
-        Self::SubMenu(item)
-    }
-}
-
-impl From<muda::MenuItemKind> for MenuItem {
-    fn from(item: muda::MenuItemKind) -> Self {
-        match item {
-            muda::MenuItemKind::MenuItem(menu_item) => StandardItem {
-                id: menu_item.id().0.clone(),
-                label: menu_item.text().replace('&', ""),
-                enabled: menu_item.is_enabled(),
-                icon: None,
-                predefined_menu_item_kind: None,
-            }
-            .into(),
-            muda::MenuItemKind::Submenu(submenu) => SubMenuItem {
-                label: submenu.text().replace('&', ""),
-                enabled: submenu.is_enabled(),
-                submenu: submenu.items().into_iter().map(Into::into).collect(),
-            }
-            .into(),
-            muda::MenuItemKind::Predefined(predefined_menu_item) => {
-                match predefined_menu_item.predefined_item_kind() {
-                    Some(PredefinedMenuItemKind::Separator) => MenuItem::Separator,
-                    Some(predefined_menu_item_kind) => StandardItem {
-                        id: predefined_menu_item.id().0.clone(),
-                        label: predefined_menu_item.text().replace('&', ""),
-                        enabled: true,
-                        icon: None,
-                        predefined_menu_item_kind: Some(predefined_menu_item_kind),
-                    }
-                    .into(),
-                    _ => StandardItem {
-                        id: predefined_menu_item.id().0.clone(),
-                        label: predefined_menu_item.text().replace('&', ""),
-                        enabled: true,
-                        icon: None,
-                        predefined_menu_item_kind: None,
-                    }
-                    .into(),
-                }
-            }
-            muda::MenuItemKind::Check(check_menu_item) => CheckmarkItem {
-                id: check_menu_item.id().0.clone(),
-                label: check_menu_item.text().replace('&', ""),
-                enabled: check_menu_item.is_enabled(),
-                checked: check_menu_item.is_checked(),
-            }
-            .into(),
-            muda::MenuItemKind::Icon(icon_menu_item) => StandardItem {
-                id: icon_menu_item.id().0.clone(),
-                label: icon_menu_item.text().replace('&', ""),
-                enabled: icon_menu_item.is_enabled(),
-                icon: icon_menu_item
-                    .icon()
-                    .map(|icon| icon.to_pixbuf().save_to_bufferv("png", &[]).unwrap()),
-                predefined_menu_item_kind: None,
-            }
-            .into(),
-        }
-    }
-}
-
-impl From<MenuItem> for ksni::MenuItem<Tray> {
-    fn from(item: MenuItem) -> Self {
-        match item {
-            MenuItem::Standard(menu_item) => {
-                let id = menu_item.id;
-                match menu_item.predefined_menu_item_kind {
-                    Some(PredefinedMenuItemKind::About(Some(metadata))) => {
-                        let about_dialog = AboutDialog::new(metadata);
-                        ksni::menu::StandardItem {
-                            label: menu_item.label,
-                            enabled: menu_item.enabled,
-                            icon_data: menu_item.icon.unwrap_or_default(),
-                            activate: Box::new(move |_| {
-                                about_dialog.show();
-                            }),
-                            ..Default::default()
-                        }
-                        .into()
-                    }
-                    _ => ksni::menu::StandardItem {
-                        label: menu_item.label,
+pub fn muda_to_ksni_menu_item(
+    item: Arc<ArcSwap<muda::CompatMenuItem>>,
+) -> ksni::menu::MenuItem<Tray> {
+    match &**item.load() {
+        muda::CompatMenuItem::Standard(menu_item) => {
+            let id = menu_item.id.clone();
+            match &menu_item.predefined_menu_item_kind {
+                Some(PredefinedMenuItemKind::About(Some(metadata))) => {
+                    let about_dialog = AboutDialog::new(metadata.clone());
+                    ksni::menu::StandardItem {
+                        label: menu_item.label.clone(),
                         enabled: menu_item.enabled,
-                        icon_data: menu_item.icon.unwrap_or_default(),
-                        activate: Box::new(move |_| send_menu_event(&id)),
+                        icon_data: menu_item.icon.clone().unwrap_or_default(),
+                        activate: Box::new(move |_| {
+                            about_dialog.show();
+                        }),
                         ..Default::default()
                     }
-                    .into(),
+                    .into()
                 }
-            }
-            MenuItem::Checkmark(check_menu_item) => {
-                let id = check_menu_item.id;
-                ksni::menu::CheckmarkItem {
-                    label: check_menu_item.label,
-                    enabled: check_menu_item.enabled,
-                    checked: check_menu_item.checked,
+                _ => ksni::menu::StandardItem {
+                    label: menu_item.label.clone(),
+                    enabled: menu_item.enabled,
+                    icon_data: menu_item.icon.clone().unwrap_or_default(),
                     activate: Box::new(move |_| send_menu_event(&id)),
                     ..Default::default()
                 }
-                .into()
+                .into(),
             }
-            MenuItem::SubMenu(submenu) => ksni::menu::SubMenu {
-                label: submenu.label,
-                enabled: submenu.enabled,
-                submenu: submenu.submenu.into_iter().map(Into::into).collect(),
+        }
+        muda::CompatMenuItem::Checkmark(check_menu_item) => {
+            let id = check_menu_item.id.clone();
+            ksni::menu::CheckmarkItem {
+                label: check_menu_item.label.clone(),
+                enabled: check_menu_item.enabled,
+                checked: check_menu_item.checked,
+                activate: Box::new(move |_| send_menu_event(&id)),
                 ..Default::default()
             }
-            .into(),
-            MenuItem::Separator => ksni::menu::MenuItem::Separator,
+            .into()
         }
+        muda::CompatMenuItem::SubMenu(submenu) => ksni::menu::SubMenu {
+            label: submenu.label.clone(),
+            enabled: submenu.enabled,
+            submenu: submenu
+                .submenu
+                .iter()
+                .cloned()
+                .map(muda_to_ksni_menu_item)
+                .collect(),
+            ..Default::default()
+        }
+        .into(),
+        muda::CompatMenuItem::Separator => ksni::menu::MenuItem::Separator,
     }
 }
 
