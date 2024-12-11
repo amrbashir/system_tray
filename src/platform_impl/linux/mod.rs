@@ -6,7 +6,7 @@ mod icon;
 mod menu;
 mod tray;
 
-use std::thread;
+use std::{ops::ControlFlow, thread};
 
 pub(crate) use icon::PlatformIcon;
 use tray::Tray;
@@ -35,8 +35,15 @@ impl TrayIcon {
 
         let update_tray_handle = tray_handle.clone();
         thread::spawn(move || {
-            while muda::recv_menu_update().is_ok() {
-                update_tray_handle.update(|_| {});
+            while let Ok(flow) = muda::recv_menu_update() {
+                match flow {
+                    ControlFlow::Continue(_) => {
+                        update_tray_handle.update(|_| {});
+                    }
+                    ControlFlow::Break(_) => {
+                        break;
+                    }
+                }
             }
         });
 
@@ -104,5 +111,11 @@ impl TrayIcon {
 
     pub fn rect(&self) -> Option<crate::Rect> {
         None
+    }
+}
+
+impl Drop for TrayIcon {
+    fn drop(&mut self) {
+        muda::send_menu_shutdown();
     }
 }
