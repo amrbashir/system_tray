@@ -6,7 +6,10 @@ mod icon;
 mod menu;
 mod tray;
 
-use std::{ops::ControlFlow, thread};
+use std::{
+    sync::{atomic::AtomicBool, Arc},
+    thread,
+};
 
 pub(crate) use icon::PlatformIcon;
 use tray::Tray;
@@ -15,6 +18,7 @@ use crate::{icon::Icon, TrayIconAttributes, TrayIconId};
 
 pub struct TrayIcon {
     tray_handle: ksni::Handle<Tray>,
+    shutdown: Arc<AtomicBool>,
 }
 
 impl TrayIcon {
@@ -29,25 +33,27 @@ impl TrayIcon {
             .map(|menu| menu.compat_items())
             .unwrap_or_default();
 
+        let shutdown = Arc::new(AtomicBool::new(false));
+
         let tray_service = ksni::TrayService::new(Tray::new(id, icon, title, tooltip, menu));
         let tray_handle = tray_service.handle();
         tray_service.spawn();
 
         let update_tray_handle = tray_handle.clone();
+        let update_shutdown = shutdown.clone();
         thread::spawn(move || {
-            while let Ok(flow) = muda::recv_menu_update() {
-                match flow {
-                    ControlFlow::Continue(_) => {
-                        update_tray_handle.update(|_| {});
-                    }
-                    ControlFlow::Break(_) => {
-                        break;
-                    }
+            while muda::recv_menu_update().is_ok() {
+                if update_shutdown.load(std::sync::atomic::Ordering::Relaxed) {
+                    break;
                 }
+                update_tray_handle.update(|_| {});
             }
         });
 
-        Ok(Self { tray_handle })
+        Ok(Self {
+            tray_handle,
+            shutdown,
+        })
     }
 
     pub fn set_icon(&mut self, icon: Option<Icon>) -> crate::Result<()> {
@@ -116,6 +122,8 @@ impl TrayIcon {
 
 impl Drop for TrayIcon {
     fn drop(&mut self) {
-        muda::send_menu_shutdown();
+        self.shutdown
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        muda::send_menu_update();
     }
 }
