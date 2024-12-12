@@ -9,8 +9,7 @@ license = "MIT OR Apache-2.0"
 categories = ["gui"]
 
 [features]
-default = ["libxdo"]
-libxdo = ["muda/libxdo"]
+default = []
 serde = ["muda/serde", "dep:serde"]
 common-controls-v6 = ["muda/common-controls-v6"]
 
