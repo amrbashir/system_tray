@@ -81,7 +81,11 @@ impl ksni::Tray for Tray {
     }
 
     fn menu(&self) -> Vec<ksni::MenuItem<Self>> {
-        self.menu.iter().cloned().map(muda_to_ksni_menu_item).collect()
+        self.menu
+            .iter()
+            .cloned()
+            .map(muda_to_ksni_menu_item)
+            .collect()
     }
 
     fn activate(&mut self, x: i32, y: i32) {
