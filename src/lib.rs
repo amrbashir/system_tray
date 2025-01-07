@@ -97,13 +97,13 @@
 //! Same can be done for menu events using [`MenuEvent::set_event_handler`].
 //!
 //! ```no_run
-//! # use winit::event_loop::EventLoopBuilder;
+//! # use winit::event_loop::EventLoop;
 //! enum UserEvent {
 //!   TrayIconEvent(tray_icon::TrayIconEvent),
 //!   MenuEvent(tray_icon::menu::MenuEvent)
 //! }
 //!
-//! let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build().unwrap();
+//! let event_loop = EventLoop::<UserEvent>::with_user_event().build().unwrap();
 //!
 //! let proxy = event_loop.create_proxy();
 //! tray_icon::TrayIconEvent::set_event_handler(Some(move |event| {

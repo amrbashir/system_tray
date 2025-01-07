@@ -42,7 +42,7 @@ fn main() -> Result<(), eframe::Error> {
                     .borrow_mut()
                     .replace(TrayIconBuilder::new().with_icon(icon).build().unwrap());
             }
-            Box::<MyApp>::default()
+            Ok(Box::<MyApp>::default())
         }),
     )
 }
