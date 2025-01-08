@@ -17,20 +17,30 @@
 //! - On Windows and Linux, an event loop must be running on the thread, on Windows, a win32 event loop and on Linux, a gtk event loop. It doesn't need to be the main thread but you have to create the tray icon on the same thread as the event loop.
 //! - On macOS, an event loop must be running on the main thread so you also need to create the tray icon on the main thread. You must make sure that the event loop is already running and not just created before creating a TrayIcon to prevent issues with fullscreen apps. In Winit for example the earliest you can create icons is on [`StartCause::Init`](https://docs.rs/winit/latest/winit/event/enum.StartCause.html#variant.Init).
 //!
+//! # Cargo Features
+//! 
+//! - `common-controls-v6`: Use `TaskDialogIndirect` API from `ComCtl32.dll` v6 on Windows for showing the predefined `About` menu item dialog.
+//! - `serde`: Enables de/serializing derives.
+//! - `linux-ksni`: Use ksni and the xdg standard to create and manage tray icons on Linux. (experimental)
+//! 
 //! # Dependencies (Linux Only)
 //!
-//! On Linux, `gtk`, `libxdo` is used to make the predfined `Copy`, `Cut`, `Paste` and `SelectAll` menu items work and `libappindicator` or `libayatnat-appindicator` are used to create the tray icon. `libdbus-1-dev` is used to communicate with the desktop environment to manage the tray icon. So make sure to install these packages on your system.
+//! On Linux, `gtk` is required. `libappindicator` or `libayatana-appindicator` are used to create the tray icon. Alternatively `libdbus-1-dev` is used to communicate with the desktop environment to manage the tray icon, if the `linux-ksni` feature is enabled. So make sure to install these packages on your system.
 //!
 //! #### Arch Linux / Manjaro:
 //!
 //! ```sh
-//! pacman -S dbus gtk3 xdotool libappindicator-gtk3 #or libayatana-appindicator
+//! pacman -S gtk3 libappindicator-gtk3 # or libayatana-appindicator
+//! # or
+//! pacman -S gtk3 dbus
 //! ```
 //!
 //! #### Debian / Ubuntu:
 //!
 //! ```sh
-//! sudo apt install libdbus-1-dev libgtk-3-dev libxdo-dev libappindicator3-dev #or libayatana-appindicator3-dev
+//! sudo apt install libgtk-3-dev libappindicator3-dev # or libayatana-appindicator3-dev
+//! # or
+//! sudo apt install libgtk-3-dev libdbus-1-dev
 //! ```
 //!
 //! # Examples
@@ -122,6 +132,9 @@
 
 use std::{cell::RefCell, rc::Rc};
 
+#[cfg(all(target_os = "linux", not(feature = "linux-ksni")))]
+use std::path::{Path, PathBuf};
+
 use counter::Counter;
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use once_cell::sync::{Lazy, OnceCell};
@@ -147,13 +160,31 @@ static COUNTER: Counter = Counter::new();
 /// Attributes to use when creating a tray icon.
 pub struct TrayIconAttributes {
     /// Tray icon tooltip
+    ///
+    /// ## Platform-specific:
+    ///
+    /// - **Linux:** Unsupported. Works with feature `linux-ksni`.
     pub tooltip: Option<String>,
 
     /// Tray menu
+    ///
+    /// ## Platform-specific:
+    ///
+    /// - **Linux:** Once a menu is set it cannot be removed so `None` has no effect. Works with feature `linux-ksni`.
     pub menu: Option<Box<dyn menu::ContextMenu>>,
 
     /// Tray icon
+    ///
+    /// ## Platform-specific:
+    ///
+    /// - **Linux:** Sometimes the icon won't be visible unless a menu is set.
+    ///     Setting an empty [`Menu`](crate::menu::Menu) is enough.
+    ///     Works with feature `linux-ksni`.
     pub icon: Option<Icon>,
+
+    /// Tray icon temp dir path. **Linux only**.
+    #[cfg(all(target_os = "linux", not(feature = "linux-ksni")))]
+    pub temp_dir_path: Option<PathBuf>,
 
     /// Use the icon as a [template](https://developer.apple.com/documentation/appkit/nsimage/1520017-template?language=objc). **macOS only**.
     pub icon_is_template: bool,
@@ -165,6 +196,12 @@ pub struct TrayIconAttributes {
     ///
     /// ## Platform-specific
     ///
+    /// - **Linux:** The title will not be shown unless there is an icon
+    ///   as well.  The title is useful for numerical and other frequently
+    ///   updated information.  In general, it shouldn't be shown unless a
+    ///   user requests it as it can take up a significant amount of space
+    ///   on the user's panel.  This may not be shown in all visualizations.
+    ///   Works with feature `linux-ksni`.
     /// - **Windows:** Unsupported.
     pub title: Option<String>,
 }
@@ -175,6 +212,8 @@ impl Default for TrayIconAttributes {
             tooltip: None,
             menu: None,
             icon: None,
+            #[cfg(all(target_os = "linux", not(feature = "linux-ksni")))]
+            temp_dir_path: None,
             icon_is_template: false,
             menu_on_left_click: true,
             title: None,
@@ -207,18 +246,32 @@ impl TrayIconBuilder {
     }
 
     /// Set the a menu for this tray icon.
+    ///
+    /// ## Platform-specific:
+    ///
+    /// - **Linux:** Once a menu is set it cannot be removed so `None` has no effect. Works with feature `linux-ksni`.
     pub fn with_menu(mut self, menu: Box<dyn menu::ContextMenu>) -> Self {
         self.attrs.menu = Some(menu);
         self
     }
 
     /// Set an icon for this tray icon.
+    ///
+    /// ## Platform-specific:
+    ///
+    /// - **Linux:** Sometimes the icon won't be visible unless a menu is set.
+    ///     Setting an empty [`Menu`](crate::menu::Menu) is enough.
+    ///     Works with feature `linux-ksni`.
     pub fn with_icon(mut self, icon: Icon) -> Self {
         self.attrs.icon = Some(icon);
         self
     }
 
     /// Set a tooltip for this tray icon.
+    ///
+    /// ## Platform-specific:
+    ///
+    /// - **Linux:** Unsupported. Works with feature `linux-ksni`.
     pub fn with_tooltip<S: AsRef<str>>(mut self, s: S) -> Self {
         self.attrs.tooltip = Some(s.as_ref().to_string());
         self
@@ -231,6 +284,18 @@ impl TrayIconBuilder {
     /// - **Windows:** Unsupported.
     pub fn with_title<S: AsRef<str>>(mut self, title: S) -> Self {
         self.attrs.title.replace(title.as_ref().to_string());
+        self
+    }
+
+    /// Set tray icon temp dir path. **Linux only**.
+    /// 
+    /// Not availabe with feature `linux-ksni`.
+    ///
+    /// On Linux, we need to write the icon to the disk and usually it will
+    /// be `$XDG_RUNTIME_DIR/tray-icon` or `$TEMP/tray-icon`.
+    #[cfg(all(target_os = "linux", not(feature = "linux-ksni")))]
+    pub fn with_temp_dir_path<P: AsRef<Path>>(mut self, s: P) -> Self {
+        self.attrs.temp_dir_path = Some(s.as_ref().to_path_buf());
         self
     }
 
@@ -300,16 +365,30 @@ impl TrayIcon {
     }
 
     /// Set new tray icon. If `None` is provided, it will remove the icon.
+    ///
+    /// ## Platform-specific:
+    ///
+    /// - **Linux:** Sometimes the icon won't be visible unless a menu is set.
+    ///     Setting an empty [`Menu`](crate::menu::Menu) is enough.
+    ///     Works with feature `linux-ksni`.
     pub fn set_icon(&self, icon: Option<Icon>) -> Result<()> {
         self.tray.borrow_mut().set_icon(icon)
     }
 
     /// Set new tray menu.
+    ///
+    /// ## Platform-specific:
+    ///
+    /// - **Linux:** Once a menu is set it cannot be removed so `None` has no effect. Works with feature `linux-ksni`.
     pub fn set_menu(&self, menu: Option<Box<dyn menu::ContextMenu>>) {
         self.tray.borrow_mut().set_menu(menu)
     }
 
     /// Sets the tooltip for this tray icon.
+    ///
+    /// ## Platform-specific:
+    ///
+    /// - **Linux:** Unsupported. Works with feature `linux-ksni`.
     pub fn set_tooltip<S: AsRef<str>>(&self, tooltip: Option<S>) -> Result<()> {
         self.tray.borrow_mut().set_tooltip(tooltip)
     }
@@ -318,9 +397,20 @@ impl TrayIcon {
     ///
     /// ## Platform-specific:
     ///
-    /// - **Windows:** Unsupported
+    /// - **Windows:** Unsupported.
     pub fn set_title<S: AsRef<str>>(&self, title: Option<S>) {
         self.tray.borrow_mut().set_title(title)
+    }
+
+    /// Sets the tray icon temp dir path. **Linux only**.
+    /// 
+    /// Not availabe with feature `linux-ksni`.
+    ///
+    /// On Linux, we need to write the icon to the disk and usually it will
+    /// be `$XDG_RUNTIME_DIR/tray-icon` or `$TEMP/tray-icon`.
+    #[cfg(all(target_os = "linux", not(feature = "linux-ksni")))]
+    pub fn set_temp_dir_path<P: AsRef<Path>>(&self, path: Option<P>) {
+        self.tray.borrow_mut().set_temp_dir_path(path);
     }
 
     /// Show or hide this tray icon
@@ -376,7 +466,9 @@ impl TrayIcon {
 ///
 /// ## Platform-specific:
 ///
-/// - **Linux**: Only `Click` is supported.
+/// - **Linux**: The event is not emmited even though the icon is shown
+///   and will still show a context menu on right click.
+///   With feature `linux-ksni`, only `Click` is supported.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(tag = "type"))]
