@@ -9,10 +9,10 @@ license = "MIT OR Apache-2.0"
 categories = ["gui"]
 
 [features]
-default = ["libxdo"]
-libxdo = ["muda/libxdo"]
+default = []
 serde = ["muda/serde", "dep:serde"]
 common-controls-v6 = ["muda/common-controls-v6"]
+linux-ksni = ["dep:ksni", "dep:arc-swap", "muda/linux-ksni"]
 
 [dependencies]
 muda = { version = "0.15", default-features = false }
@@ -33,6 +33,8 @@ features = [
 
 [target."cfg(target_os = \"linux\")".dependencies]
 libappindicator = "0.9"
+arc-swap = { version = "1.7.1", optional = true }
+ksni = { version = "0.2.2", optional = true }
 dirs = "5"
 
 [target."cfg(target_os = \"linux\")".dev-dependencies]
@@ -78,3 +80,6 @@ tao = "0.30"
 image = "0.25"
 eframe = "0.27"
 serde_json = "1"
+
+[patch.crates-io]
+muda = { git = "https://github.com/dfaust/muda", branch = "ksni" }

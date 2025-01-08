@@ -4,33 +4,33 @@ tray-icon lets you create tray icons for desktop applications.
 
 - Windows
 - macOS
-- Linux (gtk Only)
+- Linux
 
 ## Platform-specific notes:
 
 - On Windows and Linux, an event loop must be running on the thread, on Windows, a win32 event loop and on Linux, a gtk event loop. It doesn't need to be the main thread but you have to create the tray icon on the same thread as the event loop.
 - On macOS, an event loop must be running on the main thread so you also need to create the tray icon on the main thread.
 
-### Cargo Features
+## Cargo Features
 
 - `common-controls-v6`: Use `TaskDialogIndirect` API from `ComCtl32.dll` v6 on Windows for showing the predefined `About` menu item dialog.
-- `libxdo`: Enables linking to `libxdo` which is used for the predfined `Copy`, `Cut`, `Paste` and `SelectAll` menu item, see https://github.com/tauri-apps/muda#cargo-features
 - `serde`: Enables de/serializing derives.
+- `linux-ksni`: Use ksni and the xdg standard to create and manage tray icons on Linux. (experimental)
 
 ## Dependencies (Linux Only)
 
-On Linux, `gtk`, `libxdo` is used to make the predfined `Copy`, `Cut`, `Paste` and `SelectAll` menu items work and `libappindicator` or `libayatnat-appindicator` are used to create the tray icon, so make sure to install them on your system.
+On Linux, `gtk`, `libappindicator` or `libayatana-appindicator` are used to create the tray icon. When using the `linux-ksni` feature, `libdbus-1-dev` is needed as well. So make sure to install these packages on your system.
 
 #### Arch Linux / Manjaro:
 
 ```sh
-pacman -S gtk3 xdotool libappindicator-gtk3 #or libayatana-appindicator
+pacman -S gtk3 libappindicator-gtk3 # or `libayatana-appindicator` and optionally `dbus`
 ```
 
 #### Debian / Ubuntu:
 
 ```sh
-sudo apt install libgtk-3-dev libxdo-dev libappindicator3-dev #or libayatana-appindicator3-dev
+sudo apt install libgtk-3-dev libappindicator3-dev # or `libayatana-appindicator3-dev` and optionally `libdbus-1-dev`
 ```
 
 ## Examples
