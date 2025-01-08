@@ -19,22 +19,18 @@ tray-icon lets you create tray icons for desktop applications.
 
 ## Dependencies (Linux Only)
 
-On Linux, `gtk` is required. `libappindicator` or `libayatana-appindicator` are used to create the tray icon. Alternatively `libdbus-1-dev` is used to communicate with the desktop environment to manage the tray icon, if the `linux-ksni` feature is enabled. So make sure to install these packages on your system.
+On Linux, `gtk`, `libappindicator` or `libayatana-appindicator` are used to create the tray icon. When using the `linux-ksni` feature, `libdbus-1-dev` is needed as well. So make sure to install these packages on your system.
 
 #### Arch Linux / Manjaro:
 
 ```sh
-pacman -S gtk3 libappindicator-gtk3 # or libayatana-appindicator
-# or
-pacman -S gtk3 dbus
+pacman -S gtk3 libappindicator-gtk3 # or `libayatana-appindicator` and optionally `dbus`
 ```
 
 #### Debian / Ubuntu:
 
 ```sh
-sudo apt install libgtk-3-dev libappindicator3-dev # or libayatana-appindicator3-dev
-# or
-sudo apt install libgtk-3-dev libdbus-1-dev
+sudo apt install libgtk-3-dev libappindicator3-dev # or `libayatana-appindicator3-dev` and optionally `libdbus-1-dev`
 ```
 
 ## Examples

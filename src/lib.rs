@@ -18,29 +18,25 @@
 //! - On macOS, an event loop must be running on the main thread so you also need to create the tray icon on the main thread. You must make sure that the event loop is already running and not just created before creating a TrayIcon to prevent issues with fullscreen apps. In Winit for example the earliest you can create icons is on [`StartCause::Init`](https://docs.rs/winit/latest/winit/event/enum.StartCause.html#variant.Init).
 //!
 //! # Cargo Features
-//! 
+//!
 //! - `common-controls-v6`: Use `TaskDialogIndirect` API from `ComCtl32.dll` v6 on Windows for showing the predefined `About` menu item dialog.
 //! - `serde`: Enables de/serializing derives.
 //! - `linux-ksni`: Use ksni and the xdg standard to create and manage tray icons on Linux. (experimental)
-//! 
+//!
 //! # Dependencies (Linux Only)
 //!
-//! On Linux, `gtk` is required. `libappindicator` or `libayatana-appindicator` are used to create the tray icon. Alternatively `libdbus-1-dev` is used to communicate with the desktop environment to manage the tray icon, if the `linux-ksni` feature is enabled. So make sure to install these packages on your system.
+//! On Linux, `gtk`, `libappindicator` or `libayatana-appindicator` are used to create the tray icon. When using the `linux-ksni` feature, `libdbus-1-dev` is needed as well. So make sure to install these packages on your system.
 //!
 //! #### Arch Linux / Manjaro:
 //!
 //! ```sh
-//! pacman -S gtk3 libappindicator-gtk3 # or libayatana-appindicator
-//! # or
-//! pacman -S gtk3 dbus
+//! pacman -S gtk3 libappindicator-gtk3 # or `libayatana-appindicator` and optionally `dbus`
 //! ```
 //!
 //! #### Debian / Ubuntu:
 //!
 //! ```sh
-//! sudo apt install libgtk-3-dev libappindicator3-dev # or libayatana-appindicator3-dev
-//! # or
-//! sudo apt install libgtk-3-dev libdbus-1-dev
+//! sudo apt install libgtk-3-dev libappindicator3-dev # or `libayatana-appindicator3-dev` and optionally `libdbus-1-dev`
 //! ```
 //!
 //! # Examples
@@ -288,7 +284,7 @@ impl TrayIconBuilder {
     }
 
     /// Set tray icon temp dir path. **Linux only**.
-    /// 
+    ///
     /// Not availabe with feature `linux-ksni`.
     ///
     /// On Linux, we need to write the icon to the disk and usually it will
@@ -403,7 +399,7 @@ impl TrayIcon {
     }
 
     /// Sets the tray icon temp dir path. **Linux only**.
-    /// 
+    ///
     /// Not availabe with feature `linux-ksni`.
     ///
     /// On Linux, we need to write the icon to the disk and usually it will
